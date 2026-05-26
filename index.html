@@ -1,0 +1,397 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+#app{font-family:"Apple SD Gothic Neo","Malgun Gothic",var(--font-sans),sans-serif;background:var(--color-background-secondary)}
+.tab{background:none;border:none;padding:11px 16px;cursor:pointer;font-size:13px;color:var(--color-text-secondary);border-bottom:2px solid transparent;font-family:inherit;font-weight:500;transition:color .15s}
+.tab.on{color:#185FA5;border-bottom-color:#185FA5;font-weight:700}
+.btn{padding:6px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:var(--color-background-primary);color:var(--color-text-primary)}
+.bp{background:#185FA5;color:#fff;border-color:#185FA5}
+.bd{background:#791F1F;color:#fff;border-color:#791F1F}
+.bs{background:#3B6D11;color:#fff;border-color:#3B6D11}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:20px}
+input,select,textarea{width:100%;padding:7px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);font-size:13px;font-family:inherit;background:var(--color-background-primary);color:var(--color-text-primary)}
+input:focus,select:focus,textarea:focus{outline:2px solid #185FA5;outline-offset:-1px}
+label{font-size:12px;font-weight:600;color:var(--color-text-secondary);display:block;margin-bottom:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--color-text-secondary);border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap}
+td{padding:9px 10px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.gtag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C}
+.empty{text-align:center;padding:48px 0;color:var(--color-text-secondary);font-size:13px}
+.daybtn{padding:4px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.daybtn.on{background:#185FA5;color:#fff;border-color:#185FA5}
+.chipbtn{padding:4px 10px;border-radius:16px;border:0.5px solid var(--color-border-secondary);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.chipbtn.on{background:#185FA5;color:#fff;border-color:#185FA5}
+</style>
+
+<div id="app">
+  <div style="background:#0C447C;color:#fff;padding:0 20px;height:50px;display:flex;align-items:center">
+    <span style="font-weight:700;font-size:15px">리드림영어학원</span>
+    <span style="margin-left:8px;font-size:12px;opacity:.5">학생 관리 시스템</span>
+    <span id="ss" style="margin-left:auto;font-size:11px;opacity:.5"></span>
+  </div>
+  <div style="background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;padding:0 20px">
+    <button class="tab on" data-t="students" onclick="go('students')">학생 관리</button>
+    <button class="tab" data-t="timetable" onclick="go('timetable')">시간표</button>
+    <button class="tab" data-t="withdrawn" onclick="go('withdrawn')">퇴원생</button>
+    <button class="tab" data-t="stats" onclick="go('stats')">통계</button>
+  </div>
+  <div id="view" style="padding:20px;max-width:1080px;margin:0 auto;min-height:540px"></div>
+
+  <!-- 수정: 오버레이를 position:fixed 대신 min-height로 감싸는 래퍼 안에 absolute 배치 -->
+  <div id="ov" onclick="if(event.target===this)closeModal()"
+    style="position:absolute;top:0;left:0;width:100%;height:100%;min-height:640px;
+           background:rgba(15,23,42,0.55);backdrop-filter:blur(1px);
+           display:none;align-items:flex-start;justify-content:center;
+           padding-top:80px;z-index:50">
+    <div id="mdl"
+      style="background:var(--color-background-primary);border-radius:var(--border-radius-lg);
+             padding:24px;width:480px;max-width:calc(100% - 40px);
+             max-height:72vh;overflow-y:auto;
+             border:0.5px solid var(--color-border-secondary);
+             box-shadow:0 8px 32px rgba(0,0,0,0.18)"></div>
+  </div>
+</div>
+
+<script>
+const GRADES=['중1','중2','중3','고1','고2','고3'];
+const DAYS=['월','화','수','목','금','토'];
+const SUBJECTS=['수능영어','내신영어','영어문법','영어독해','영어회화','영작','기타'];
+const KEY='ridream-v4';
+
+let D={students:[],classes:[]};
+let tab='students';
+let srch='';let gf='전체';
+
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const today=()=>new Date().toISOString().slice(0,10);
+const getS=id=>D.students.find(s=>s.id===id);
+const getC=id=>D.classes.find(c=>c.id===id);
+const cnames=ids=>(ids||[]).map(id=>getC(id)?.name).filter(Boolean).join(', ')||'—';
+
+async function loadData(){
+  try{
+    const r=await window.storage.get(KEY,true);
+    if(r){const d=JSON.parse(r.value);D.students=d.students||[];D.classes=d.classes||[];}
+  }catch(e){}
+  render();
+}
+
+let st;
+function persist(){
+  document.getElementById('ss').textContent='저장 중...';
+  clearTimeout(st);
+  st=setTimeout(async()=>{
+    try{
+      await window.storage.set(KEY,JSON.stringify(D),true);
+      document.getElementById('ss').textContent='✓ 저장됨';
+    }catch(e){document.getElementById('ss').textContent='저장 실패';}
+  },700);
+}
+
+function go(t){
+  tab=t;srch='';gf='전체';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  render();
+}
+
+function render(){
+  const v=document.getElementById('view');
+  if(tab==='students')v.innerHTML=vStudents();
+  else if(tab==='timetable')v.innerHTML=vTimetable();
+  else if(tab==='withdrawn')v.innerHTML=vWithdrawn();
+  else v.innerHTML=vStats();
+}
+
+function openModal(html){
+  document.getElementById('mdl').innerHTML=html;
+  const ov=document.getElementById('ov');
+  ov.style.display='flex';
+  // 오버레이가 앱 전체 높이를 덮도록
+  const app=document.getElementById('app');
+  ov.style.height=Math.max(app.scrollHeight,640)+'px';
+}
+function closeModal(){
+  document.getElementById('ov').style.display='none';
+  document.getElementById('mdl').innerHTML='';
+}
+
+/* ===== STUDENTS ===== */
+function sRow(s){
+  const m=s.memo?`<i class="ti ti-notes" style="font-size:14px;color:var(--color-text-secondary)" title="${esc(s.memo)}" aria-hidden="true"></i>`:'—';
+  return `<tr>
+  <td style="font-weight:700">${esc(s.name)}</td>
+  <td><span class="gtag">${esc(s.grade)}</span></td>
+  <td style="color:var(--color-text-secondary);font-size:12px">${cnames(s.classIds)}</td>
+  <td style="color:var(--color-text-secondary)">${esc(s.phone)||'—'}</td>
+  <td style="color:var(--color-text-secondary)">${esc(s.parentPhone)||'—'}</td>
+  <td style="color:var(--color-text-secondary);font-size:12px">${esc(s.enrollDate)||'—'}</td>
+  <td style="text-align:center">${m}</td>
+  <td><div style="display:flex;gap:4px;white-space:nowrap">
+    <button class="btn" onclick="openSF('${s.id}')">수정</button>
+    <button class="btn" style="color:#791F1F" onclick="wFlow('${s.id}')">퇴원</button>
+    <button class="btn" style="color:var(--color-text-secondary)" onclick="delS('${s.id}')">삭제</button>
+  </div></td></tr>`;
+}
+
+function vStudents(){
+  const active=D.students.filter(s=>s.status==='active');
+  const filtered=active.filter(s=>(!srch||s.name.includes(srch)||(s.phone||'').includes(srch))&&(gf==='전체'||s.grade===gf));
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+  <div><h2 style="font-size:17px;font-weight:700">재원생 관리</h2>
+  <p style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">현재 ${active.length}명 재원 중</p></div>
+  <button class="btn bp" onclick="openSF('')">+ 학생 추가</button>
+</div>
+<div style="display:flex;gap:8px;margin-bottom:12px">
+  <input id="si" style="width:200px" value="${esc(srch)}" oninput="srch=this.value;refreshT()" placeholder="이름 / 연락처 검색">
+  <select id="gi" style="width:90px" onchange="gf=this.value;refreshT()">
+    <option ${gf==='전체'?'selected':''}>전체</option>
+    ${GRADES.map(g=>`<option ${gf===g?'selected':''}>${g}</option>`).join('')}
+  </select>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+  <table><thead><tr>
+    <th>이름</th><th>학년</th><th>수강반</th><th>학생 연락처</th><th>학부모 연락처</th><th>등록일</th><th>메모</th><th></th>
+  </tr></thead>
+  <tbody id="stbl">${filtered.length?filtered.map(sRow).join(''):'<tr><td colspan="8" class="empty">등록된 학생이 없습니다.<br><span style="font-size:12px;margin-top:4px;display:block">위 버튼으로 학생을 추가해보세요!</span></td></tr>'}</tbody>
+  </table>
+</div>`;
+}
+
+function refreshT(){
+  const el=document.getElementById('stbl');if(!el)return;
+  const active=D.students.filter(s=>s.status==='active');
+  const filtered=active.filter(s=>(!srch||s.name.includes(srch)||(s.phone||'').includes(srch))&&(gf==='전체'||s.grade===gf));
+  el.innerHTML=filtered.length?filtered.map(sRow).join(''):'<tr><td colspan="8" class="empty">검색 결과가 없습니다.</td></tr>';
+}
+
+function openSF(id){
+  const s=id?getS(id):{};
+  const cids=s.classIds||[];
+  const chips=D.classes.map(c=>`<button class="chipbtn ${cids.includes(c.id)?'on':''}" data-cid="${c.id}" onclick="this.classList.toggle('on')" style="margin:2px">${esc(c.name)}</button>`).join('');
+  openModal(`
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">${id?'학생 정보 수정':'학생 추가'}</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="grid-column:1/-1"><label>이름 *</label><input id="fn" value="${esc(s.name||'')}" placeholder="홍길동"></div>
+      <div><label>학년</label><select id="fg">${GRADES.map(g=>`<option ${(s.grade||'고1')===g?'selected':''}>${g}</option>`).join('')}</select></div>
+      <div><label>등록일</label><input type="date" id="fe" value="${esc(s.enrollDate||today())}"></div>
+      <div><label>학생 연락처</label><input id="fp" value="${esc(s.phone||'')}" placeholder="010-0000-0000"></div>
+      <div><label>학부모 연락처</label><input id="fpp" value="${esc(s.parentPhone||'')}" placeholder="010-0000-0000"></div>
+    </div>
+    ${D.classes.length?`<div style="margin-top:10px"><label>수강 수업반</label><div style="margin-top:4px">${chips}</div></div>`:''}
+    <div style="margin-top:10px"><label>메모</label><textarea id="fm" style="height:58px;resize:vertical">${esc(s.memo||'')}</textarea></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn bp" onclick="saveS('${id||''}')">저장</button>
+    </div>`);
+}
+
+function saveS(id){
+  const name=document.getElementById('fn').value.trim();
+  if(!name){alert('이름을 입력하세요.');return;}
+  const cids=[...document.querySelectorAll('[data-cid].on')].map(b=>b.dataset.cid);
+  const s={id:id||uid(),name,grade:document.getElementById('fg').value,enrollDate:document.getElementById('fe').value,phone:document.getElementById('fp').value,parentPhone:document.getElementById('fpp').value,memo:document.getElementById('fm').value,classIds:cids,status:'active'};
+  if(id)D.students=D.students.map(x=>x.id===id?{...x,...s}:x);
+  else D.students.push(s);
+  persist();closeModal();render();
+}
+
+function delS(id){
+  if(!confirm('정말 삭제하시겠습니까?'))return;
+  D.students=D.students.filter(s=>s.id!==id);persist();render();
+}
+
+function wFlow(id){
+  const s=getS(id);
+  openModal(`
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:4px">퇴원 처리</h3>
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:16px">${esc(s.name)} 학생</p>
+    <label>퇴원일</label><input type="date" id="wd" value="${today()}" style="margin-bottom:10px">
+    <label>퇴원 사유</label><textarea id="wr" style="height:72px;resize:vertical" placeholder="사유를 입력하세요 (선택)"></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn bd" onclick="doW('${id}')">퇴원 처리</button>
+    </div>`);
+}
+
+function doW(id){
+  D.students=D.students.map(s=>s.id===id?{...s,status:'withdrawn',withdrawDate:document.getElementById('wd').value,withdrawReason:document.getElementById('wr').value}:s);
+  persist();closeModal();render();
+}
+
+/* ===== TIMETABLE ===== */
+function vTimetable(){
+  const byDay=DAYS.map(d=>({day:d,cls:D.classes.filter(c=>(c.days||[]).includes(d)).sort((a,b)=>a.startTime>b.startTime?1:-1)}));
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+  <h2 style="font-size:17px;font-weight:700">시간표 관리</h2>
+  <button class="btn bp" onclick="openCF('')">+ 수업반 추가</button>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px;margin-bottom:20px">
+  ${D.classes.length?D.classes.map(cCard).join(''):'<div class="card" style="grid-column:1/-1;text-align:center;padding:32px;color:var(--color-text-secondary);font-size:13px">수업반을 추가해보세요!</div>'}
+</div>
+${D.classes.length?`<div class="card">
+  <h3 style="font-size:13px;font-weight:700;color:var(--color-text-secondary);margin-bottom:14px">주간 시간표</h3>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+    ${byDay.map(({day,cls})=>`<div>
+      <div style="font-weight:700;font-size:13px;text-align:center;margin-bottom:8px;color:${day==='일'?'#791F1F':day==='토'?'#185FA5':'var(--color-text-primary)'}">${day}</div>
+      ${cls.length?cls.map(c=>`<div style="background:#E6F1FB;border-radius:var(--border-radius-md);padding:6px 8px;margin-bottom:4px;font-size:11px">
+        <div style="font-weight:700;color:#0C447C">${esc(c.name)}</div>
+        <div style="color:#185FA5;margin-top:1px">${c.startTime}~${c.endTime}</div>
+      </div>`).join(''):'<div style="font-size:11px;color:var(--color-text-secondary);text-align:center;padding:8px 0">—</div>'}
+    </div>`).join('')}
+  </div>
+</div>`:''}`;
+}
+
+function cCard(c){
+  const cnt=D.students.filter(s=>s.status==='active'&&(s.classIds||[]).includes(c.id)).length;
+  return `<div class="card" style="padding:16px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+    <div><div style="font-weight:700;font-size:14px">${esc(c.name)}</div>
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${esc(c.subject)} · ${esc(c.teacher)||'담당 미정'}</div></div>
+    <span style="background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap">${cnt}명</span>
+  </div>
+  <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">${(c.days||[]).join(' ')||'요일 미정'} &nbsp;${c.startTime||''}~${c.endTime||''}</div>
+  <div style="display:flex;gap:4px">
+    <button class="btn" onclick="openCF('${c.id}')">수정</button>
+    <button class="btn" style="color:#791F1F" onclick="delC('${c.id}')">삭제</button>
+  </div>
+</div>`;
+}
+
+function openCF(id){
+  const c=id?getC(id):{};const days=c.days||[];
+  openModal(`
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">${id?'수업반 수정':'수업반 추가'}</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="grid-column:1/-1"><label>수업반 이름 *</label><input id="cn" value="${esc(c.name||'')}" placeholder="고1 문법반"></div>
+      <div><label>과목</label><select id="cs">${SUBJECTS.map(s=>`<option ${(c.subject||'수능영어')===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label>담당 선생님</label><input id="ct" value="${esc(c.teacher||'')}" placeholder="선생님 이름"></div>
+      <div><label>시작 시간</label><input type="time" id="cst" value="${c.startTime||'16:00'}"></div>
+      <div><label>종료 시간</label><input type="time" id="cen" value="${c.endTime||'17:30'}"></div>
+    </div>
+    <div style="margin-top:10px"><label>수업 요일</label>
+    <div style="display:flex;gap:4px;margin-top:4px">${DAYS.map(d=>`<button class="daybtn ${days.includes(d)?'on':''}" data-day="${d}" onclick="this.classList.toggle('on')">${d}</button>`).join('')}</div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn bp" onclick="saveC('${id||''}')">저장</button>
+    </div>`);
+}
+
+function saveC(id){
+  const name=document.getElementById('cn').value.trim();
+  if(!name){alert('수업반 이름을 입력하세요.');return;}
+  const days=[...document.querySelectorAll('[data-day].on')].map(b=>b.dataset.day);
+  const c={id:id||uid(),name,subject:document.getElementById('cs').value,teacher:document.getElementById('ct').value,startTime:document.getElementById('cst').value,endTime:document.getElementById('cen').value,days};
+  if(id)D.classes=D.classes.map(x=>x.id===id?c:x);else D.classes.push(c);
+  persist();closeModal();render();
+}
+
+function delC(id){
+  if(!confirm('수업반을 삭제하시겠습니까?'))return;
+  D.classes=D.classes.filter(c=>c.id!==id);
+  D.students=D.students.map(s=>({...s,classIds:(s.classIds||[]).filter(cid=>cid!==id)}));
+  persist();render();
+}
+
+/* ===== WITHDRAWN ===== */
+function vWithdrawn(){
+  const w=D.students.filter(s=>s.status==='withdrawn');
+  return `
+<div style="margin-bottom:16px">
+  <h2 style="font-size:17px;font-weight:700">퇴원생 관리</h2>
+  <p style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">총 ${w.length}명</p>
+</div>
+<div class="card" style="padding:0;overflow:hidden">
+  <table><thead><tr><th>이름</th><th>학년</th><th>등록일</th><th>퇴원일</th><th>퇴원 사유</th><th></th></tr></thead>
+  <tbody>${w.length?w.map(s=>`<tr>
+    <td style="font-weight:700;color:var(--color-text-secondary)">${esc(s.name)}</td>
+    <td><span class="gtag" style="opacity:.6">${esc(s.grade)}</span></td>
+    <td style="color:var(--color-text-secondary);font-size:12px">${esc(s.enrollDate)||'—'}</td>
+    <td style="color:#791F1F;font-size:12px">${esc(s.withdrawDate)||'—'}</td>
+    <td style="color:var(--color-text-secondary);font-size:12px;max-width:180px">${esc(s.withdrawReason)||'—'}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn bs" onclick="restoreS('${s.id}')">복귀</button>
+      <button class="btn" style="color:var(--color-text-secondary)" onclick="delS('${s.id}')">삭제</button>
+    </div></td>
+  </tr>`).join(''):'<tr><td colspan="6" class="empty">퇴원생이 없습니다.</td></tr>'}</tbody>
+  </table>
+</div>`;
+}
+
+function restoreS(id){
+  if(!confirm('재원생으로 복귀 처리하시겠습니까?'))return;
+  D.students=D.students.map(s=>s.id===id?{...s,status:'active',withdrawDate:undefined,withdrawReason:undefined}:s);
+  persist();render();
+}
+
+/* ===== STATS ===== */
+function vStats(){
+  const active=D.students.filter(s=>s.status==='active');
+  const wn=D.students.filter(s=>s.status==='withdrawn');
+  const byG=GRADES.map(g=>({g,n:active.filter(s=>s.grade===g).length}));
+  const maxG=Math.max(...byG.map(x=>x.n),1);
+  const byC=D.classes.map(c=>({name:c.name,n:active.filter(s=>(s.classIds||[]).includes(c.id)).length}));
+  const maxC=Math.max(...byC.map(x=>x.n),1);
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months.push({label:`${d.getMonth()+1}월`,en:D.students.filter(s=>(s.enrollDate||'').startsWith(k)).length,out:D.students.filter(s=>s.status==='withdrawn'&&(s.withdrawDate||'').startsWith(k)).length});
+  }
+  const maxM=Math.max(...months.flatMap(m=>[m.en,m.out]),1);
+  const sc=(val,lbl,col)=>`<div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:36px;font-weight:800;color:${col}">${val}</div>
+    <div style="font-size:12px;color:var(--color-text-secondary);margin-top:4px">${lbl}</div>
+  </div>`;
+  return `
+<h2 style="font-size:17px;font-weight:700;margin-bottom:16px">통계</h2>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+  ${sc(active.length,'재원생','#185FA5')}${sc(wn.length,'퇴원생','#791F1F')}${sc(D.classes.length,'수업반','#BA7517')}${sc(D.students.length,'총 누적','#3B6D11')}
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">학년별 재원생</h3>
+    ${byG.map(({g,n})=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <span style="width:26px;font-size:12px;font-weight:600;color:var(--color-text-secondary)">${g}</span>
+      <div style="flex:1;height:18px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden">
+        <div style="width:${Math.round((n/maxG)*100)}%;height:100%;background:#185FA5;border-radius:4px"></div>
+      </div>
+      <span style="width:18px;text-align:right;font-size:12px;font-weight:700">${n}</span>
+    </div>`).join('')}
+  </div>
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">수업반별 인원</h3>
+    ${byC.length?byC.map(({name,n})=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <span style="width:72px;font-size:11px;font-weight:600;color:var(--color-text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(name)}">${esc(name)}</span>
+      <div style="flex:1;height:18px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden">
+        <div style="width:${Math.round((n/maxC)*100)}%;height:100%;background:#BA7517;border-radius:4px"></div>
+      </div>
+      <span style="width:18px;text-align:right;font-size:12px;font-weight:700">${n}</span>
+    </div>`).join(''):'<div style="color:var(--color-text-secondary);font-size:13px;text-align:center;padding:16px 0">수업반을 먼저 추가하세요</div>'}
+  </div>
+  <div class="card" style="grid-column:1/-1">
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">최근 6개월 등록 / 퇴원 현황</h3>
+    <div style="display:flex;gap:12px;align-items:flex-end;height:100px;margin-bottom:8px">
+      ${months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="display:flex;gap:3px;align-items:flex-end;height:78px">
+          <div title="등록 ${m.en}명" style="width:14px;background:#185FA5;border-radius:3px 3px 0 0;height:${Math.round((m.en/maxM)*70+4)}px"></div>
+          <div title="퇴원 ${m.out}명" style="width:14px;background:#F09595;border-radius:3px 3px 0 0;height:${Math.round((m.out/maxM)*70+4)}px"></div>
+        </div>
+        <span style="font-size:11px;color:var(--color-text-secondary)">${m.label}</span>
+      </div>`).join('')}
+    </div>
+    <div style="display:flex;gap:12px;font-size:11px;color:var(--color-text-secondary)">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#185FA5;border-radius:2px;margin-right:3px;vertical-align:middle"></span>등록</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#F09595;border-radius:2px;margin-right:3px;vertical-align:middle"></span>퇴원</span>
+    </div>
+  </div>
+</div>`;
+}
+
+loadData();
+</script>
