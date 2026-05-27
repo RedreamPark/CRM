@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>리드림영어학원 학생 관리 시스템</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;min-height:100vh;background:#F1F5F9}
+#root{min-height:100vh}
+.tab{background:none;border:none;padding:10px 12px;cursor:pointer;font-size:13px;color:#64748B;border-bottom:2px solid transparent;font-family:inherit;font-weight:500;white-space:nowrap}
+.tab.on{color:#185FA5;border-bottom-color:#185FA5;font-weight:700}
+.btn{padding:5px 10px;border-radius:6px;border:0.5px solid #CBD5E1;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:#fff;color:#1E293B}
+.btn:hover{background:#F8FAFC}
+.bp{background:#185FA5!important;color:#fff!important;border-color:#185FA5!important}
+.bd{background:#791F1F!important;color:#fff!important;border-color:#791F1F!important}
+.bs{background:#3B6D11!important;color:#fff!important;border-color:#3B6D11!important}
+.card{background:#fff;border:0.5px solid #E2E8F0;border-radius:10px;padding:16px}
+input,select,textarea{width:100%;padding:7px 10px;border-radius:6px;border:0.5px solid #CBD5E1;font-size:13px;font-family:inherit;background:#fff;color:#1E293B}
+input:focus,select:focus,textarea:focus{outline:2px solid #185FA5;outline-offset:-1px}
+label{font-size:12px;font-weight:600;color:#64748B;display:block;margin-bottom:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:7px 10px;text-align:left;font-size:11px;font-weight:700;color:#64748B;border-bottom:0.5px solid #E2E8F0;white-space:nowrap}
+td{padding:8px 10px;border-bottom:0.5px solid #E2E8F0;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F8FAFC}
+.gtag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C}
+.btag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;color:#fff}
+.empty{text-align:center;padding:36px 0;color:#94A3B8;font-size:13px}
+.ftrbtn{padding:4px 10px;border-radius:6px;border:1px solid #CBD5E1;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:#fff;color:#64748B}
+.ftrbtn:hover{background:#F1F5F9}
+.ftrbtn.on{background:#185FA5;color:#fff;border-color:#185FA5}
+.brbtn{padding:4px 12px;border-radius:16px;border:1.5px solid #CBD5E1;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;background:#fff;color:#64748B;transition:all .15s}
+.brbtn:hover{border-color:#93C5E8}
+.brbtn.on{color:#fff;border-color:transparent}
+.togbtn{padding:5px 12px;border-radius:6px;border:1.5px solid #CBD5E1;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#fff;color:#64748B;transition:all .15s;user-select:none}
+.togbtn.on{background:#185FA5;color:#fff;border-color:#185FA5;box-shadow:0 0 0 2px rgba(24,95,165,.2)}
+.chipbtn{padding:4px 10px;border-radius:16px;border:1.5px solid #CBD5E1;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;background:#fff;color:#64748B;margin:2px;transition:all .15s}
+.chipbtn.on{background:#185FA5;color:#fff;border-color:#185FA5;box-shadow:0 0 0 2px rgba(24,95,165,.2)}
+.jstu{padding:7px 10px;cursor:pointer;font-size:13px;color:#1E293B;border-bottom:0.5px solid #E2E8F0}
+.jstu:hover{background:#F1F5F9}
+.jstu.on{background:#E6F1FB;color:#0C447C;font-weight:700}
+.ghead{font-size:11px;font-weight:700;color:#64748B;padding:5px 10px;background:#F1F5F9}
+.shead{font-size:10px;color:#94A3B8;padding:2px 10px;background:#F1F5F9}
+.loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.88);display:flex;align-items:center;justify-content:center;z-index:999;font-size:15px;color:#64748B;gap:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:22px;height:22px;border:3px solid #E2E8F0;border-top-color:#185FA5;border-radius:50%;animation:spin .7s linear infinite}
+</style>
+</head>
+<body>
+<div id="root"><div style="padding:60px;text-align:center;color:#94A3B8">로딩 중...</div></div>
+<script>
+(function(){
+const GRADES=['중1','중2','중3','고1','고2','고3'];
+const DAYS=['월','화','수','목','금','토'];
+const SUBJ_HINTS=['수능영어','내신영어','영어문법','영어독해','영어회화','영작','기초영어'];
+const DKEYS=['branches','teachers','students','classes','journals','payments'];
+const BR_COLORS=['#185FA5','#3B6D11','#BA7517','#7B2D8B','#1A6B5A','#8B2D2D'];
+const BRANCH_KEY='ridream_branch';
+
+const LOGO=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 76" style="height:30px;width:auto;flex-shrink:0"><rect width="110" height="76" fill="white" rx="5"/><text x="6" y="62" font-family="Impact,'Arial Black',sans-serif" font-weight="900" font-size="64" fill="#FF6A00" letter-spacing="-2">RE</text><circle cx="99" cy="26" r="7" fill="#FF6A00"/><circle cx="99" cy="58" r="7" fill="#FF6A00"/></svg>`;
+const LOGO_LG=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 76" style="height:50px;width:auto;margin-bottom:12px"><rect width="110" height="76" fill="white" rx="6"/><text x="6" y="62" font-family="Impact,'Arial Black',sans-serif" font-weight="900" font-size="64" fill="#FF6A00" letter-spacing="-2">RE</text><circle cx="99" cy="26" r="7" fill="#FF6A00"/><circle cx="99" cy="58" r="7" fill="#FF6A00"/></svg>`;
+
+let D={branches:[],teachers:[],students:[],classes:[],journals:[],payments:[]};
+let CU=null,tab='students',srch='',gf='전체',jSel=null,ttFil='전체';
+let revM=new Date().toISOString().slice(0,7);
+let modal=null;
+let currentBranch=localStorage.getItem(BRANCH_KEY)||'전체';
+// ★★★ 아래 두 줄을 채운 뒤 선생님들에게 배포하세요 ★★★
+const SCRIPT_URL_FIXED = 'https://script.google.com/macros/s/여기에URL입력/exec';
+const API_KEY_FIXED    = 'ridream2024';  // Code.gs의 SECRET_KEY 와 동일하게
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+let SCRIPT_URL = SCRIPT_URL_FIXED;
+let API_KEY    = API_KEY_FIXED;
+
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const today=()=>new Date().toISOString().slice(0,10);
+const getS=id=>D.students.find(s=>s.id===id);
+const getC=id=>D.classes.find(c=>c.id===id);
+const getT=id=>D.teachers.find(t=>t.id===id);
+const getBr=id=>D.branches.find(b=>b.id===id);
+const cnames=ids=>(ids||[]).map(id=>{const c=getC(id);return c?c.name:null}).filter(Boolean).join(', ')||'—';
+const fmtW=n=>Number(n||0).toLocaleString()+'원';
+const brIdx=id=>D.branches.findIndex(b=>b.id===id);
+const brColor=id=>{const i=brIdx(id);return i>=0?BR_COLORS[i%BR_COLORS.length]:'#94A3B8';};
+const brTag=id=>id?`<span class="btag" style="background:${brColor(id)}">${esc(id)}</span>`:'<span style="font-size:11px;color:#CBD5E1">미지정</span>';
+const bFilter=item=>currentBranch==='전체'||!item.branch||item.branch===currentBranch;
+
+window.app={};const A=window.app;
+
+/* ── API ── */
+A.api=async function(params){
+  params.key=API_KEY;
+  const entries=Object.entries(params).map(([k,v])=>[k,typeof v==='object'?JSON.stringify(v):String(v)]);
+  const res=await fetch(SCRIPT_URL+'?'+new URLSearchParams(entries));
+  return res.json();
+};
+A.saveRec=async function(sheet,record){
+  A.setSS('저장 중...');
+  try{const r=await A.api({action:'save',sheet,record:JSON.stringify(record)});A.setSS(r.ok?'✓ 저장됨':'⚠ 저장 실패');}
+  catch(e){A.setSS('⚠ 네트워크 오류');}
+};
+A.delRec=async function(sheet,id){
+  A.setSS('삭제 중...');
+  try{await A.api({action:'delete',sheet,id});A.setSS('✓ 완료');}
+  catch(e){A.setSS('⚠ 네트워크 오류');}
+};
+
+/* ── 데이터 로드 ── */
+A.loadData=async function(){
+  // URL and KEY are hardcoded
+  showLoading(true);
+  try{
+    const r=await A.api({action:'load'});
+    if(r.ok){
+      DKEYS.forEach(k=>{D[k]=r.data[k]||[];});
+      // 비밀번호/아이디가 숫자로 읽혀온 경우 강제 문자열 변환
+      D.teachers=D.teachers.map(t=>({...t,id:String(t.id),pw:String(t.pw)}));
+    }
+    else if(r.err==='unauthorized'){alert('비밀키가 올바르지 않습니다. 설정을 확인하세요.');localStorage.removeItem(APIKEY_KEY);API_KEY='';}
+    else{alert('데이터 로드 실패: '+r.err);}
+  }catch(e){alert('서버 연결 실패.\n'+e.message);}
+  showLoading(false);A.render();
+};
+A.sync=async function(){
+  A.setSS('동기화 중...');showLoading(true);
+  try{
+    const r=await A.api({action:'load'});
+    if(r.ok){
+      DKEYS.forEach(k=>{D[k]=r.data[k]||[];});
+      D.teachers=D.teachers.map(t=>({...t,id:String(t.id),pw:String(t.pw)}));
+      A.setSS('✓ 동기화됨');
+    }
+    else A.setSS('⚠ 실패');
+  }catch(e){A.setSS('⚠ 오류');}
+  showLoading(false);A.render();
+};
+
+function showLoading(on){
+  let el=document.getElementById('ldov');
+  if(on&&!el){el=document.createElement('div');el.id='ldov';el.className='loading-overlay';el.innerHTML='<div class="spinner"></div><span>서버 통신 중...</span>';document.body.appendChild(el);}
+  else if(!on&&el)el.remove();
+}
+A.setSS=function(t){const el=document.getElementById('ss');if(el)el.textContent=t;};
+A.openModal=function(h){modal=h;A.render();};
+A.closeModal=function(){modal=null;A.render();};
+A.setBranch=function(b){currentBranch=b;localStorage.setItem(BRANCH_KEY,b);modal=null;A.render();};
+
+A.render=function(){
+  try{
+    const root=document.getElementById('root');if(!root)return;
+    // URL/KEY are hardcoded — skip setup screen
+    if(!CU){root.innerHTML=A.loginHTML();setTimeout(()=>{const li=document.getElementById('li');if(li)li.focus();},50);return;}
+    const views={students:A.vStudents,timetable:A.vTimetable,journal:A.vJournal,withdrawn:A.vWithdrawn,revenue:A.vRevenue,stats:A.vStats,teachers:A.vTeachers};
+    root.innerHTML=A.shell()+(modal?modal:(views[tab]||A.vStudents)());
+  }catch(e){const r=document.getElementById('root');if(r)r.innerHTML='<div style="padding:40px;color:#791F1F">오류: '+esc(e.message)+'</div>';}
+};
+
+/* 설정 화면 제거됨 */
+
+/* ── 로그인 ── */
+A.loginHTML=function(){
+  return '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F1F5F9;padding:40px 20px">'+
+  '<div style="background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,.1);padding:40px;width:360px">'+
+  '<div style="text-align:center;margin-bottom:28px">'+LOGO_LG+
+  '<h2 style="font-size:18px;font-weight:700">학생 관리 시스템</h2>'+
+  '<p style="font-size:12px;color:#94A3B8;margin-top:5px">선생님 계정으로 로그인하세요</p></div>'+
+  '<label>아이디</label><input id="li" style="margin-bottom:12px" placeholder="아이디" onkeydown="if(event.key===\'Enter\')document.getElementById(\'lp\').focus()">'+
+  '<label>비밀번호</label><input type="password" id="lp" style="margin-bottom:8px" placeholder="비밀번호" onkeydown="if(event.key===\'Enter\')app.tryLogin()">'+
+  '<p id="lerr" style="font-size:12px;color:#791F1F;min-height:18px;margin-bottom:12px"></p>'+
+  '<button onclick="app.tryLogin()" style="width:100%;padding:11px;background:#185FA5;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">로그인</button>'+
+  '<p style="font-size:11px;color:#94A3B8;margin-top:14px;text-align:center">초기 계정: admin / 1234</p>'+
+  // no reset button
+  '</div></div>';
+};
+A.tryLogin=function(){
+  const id=(document.getElementById('li').value||'').trim(),pw=document.getElementById('lp').value||'';
+  const t=D.teachers.find(t=>String(t.id)===id&&String(t.pw)===pw);
+  if(!t){document.getElementById('lerr').textContent='아이디 또는 비밀번호가 올바르지 않습니다.';return;}
+  CU={id:t.id,name:t.name,role:t.role};tab='students';A.render();
+};
+
+A.logout=function(){CU=null;modal=null;A.render();};
+
+/* ── 메인 쉘 ── */
+A.shell=function(){
+  const isA=CU.role==='admin';
+  const tabs=['students','timetable','journal','withdrawn','revenue','stats'];
+  const L={students:'학생 관리',timetable:'시간표',journal:'수업일지/과제',withdrawn:'퇴원생',revenue:'매출 분석',stats:'통계'};
+  const brBtns=['전체',...D.branches.map(b=>b.id)].map(bid=>{
+    const on=currentBranch===bid;
+    const col=bid==='전체'?'#1E293B':brColor(bid);
+    return `<button class="brbtn ${on?'on':''}" onclick="app.setBranch('${bid}')" style="${on?'background:'+col+';border-color:'+col:''}">${esc(bid)}</button>`;
+  }).join('');
+  return '<div style="background:#0C447C;color:#fff;padding:0 16px;height:52px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.2)">'+
+    LOGO+'<span style="font-weight:700;font-size:15px">리드림영어학원</span>'+
+    '<span id="ss" style="margin-left:auto;font-size:11px;opacity:.6;margin-right:4px"></span>'+
+    '<button onclick="app.sync()" style="padding:4px 8px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:11px;cursor:pointer;font-family:inherit">↻ 동기화</button>'+
+    '<span style="font-size:12px;opacity:.9">'+esc(CU.name)+'</span>'+
+    '<button onclick="app.openPw()" title="비밀번호 변경" style="padding:4px 7px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:13px;cursor:pointer">🔒</button>'+
+    '<button onclick="app.logout()" style="padding:4px 9px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:6px;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">로그아웃</button>'+
+    '</div>'+
+    '<div style="background:#EFF6FF;padding:6px 16px;display:flex;align-items:center;gap:6px;border-bottom:1px solid #BFDBFE">'+
+    '<span style="font-size:12px;font-weight:700;color:#1E40AF;margin-right:4px;white-space:nowrap">지점 선택</span>'+brBtns+'</div>'+
+    '<div style="background:#fff;border-bottom:1px solid #E2E8F0;display:flex;padding:0 10px;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,.06)">'+
+    tabs.map(t=>'<button class="tab '+(tab===t?'on':'')+'" onclick="app.go(\''+t+'\')">'+L[t]+'</button>').join('')+
+    (isA?'<button class="tab '+(tab==='teachers'?'on':'')+'" onclick="app.go(\'teachers\')">선생님/지점 관리</button>':'')+
+    '</div>';
+};
+A.go=function(t){tab=t;srch='';gf='전체';jSel=null;modal=null;A.render();};
+
+A.mWrap=function(title,body,actions){
+  return '<div style="padding:20px;max-width:560px;margin:0 auto">'+
+  '<div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">'+
+  '<button class="btn" onclick="app.closeModal()">← 뒤로</button>'+
+  '<h2 style="font-size:16px;font-weight:700">'+esc(title)+'</h2></div>'+
+  '<div class="card" style="margin-bottom:14px">'+body+'</div>'+
+  '<div style="display:flex;gap:8px;justify-content:flex-end">'+actions+'</div></div>';
+};
+
+A.openPw=function(){
+  A.openModal(A.mWrap('비밀번호 변경',
+    '<p style="font-size:12px;color:#64748B;margin-bottom:14px">'+esc(CU.name)+' ('+esc(CU.id)+')</p>'+
+    '<label>현재 비밀번호</label><input type="password" id="pw0" style="margin-bottom:10px">'+
+    '<label>새 비밀번호</label><input type="password" id="pw1" style="margin-bottom:10px" placeholder="4자 이상">'+
+    '<label>새 비밀번호 확인</label><input type="password" id="pw2">'+
+    '<p id="pwerr" style="font-size:12px;color:#791F1F;min-height:16px;margin-top:6px"></p>',
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.changePw()">변경</button>'));
+};
+A.changePw=async function(){
+  const me=getT(CU.id),c=document.getElementById('pw0').value,n=document.getElementById('pw1').value,r=document.getElementById('pw2').value,err=document.getElementById('pwerr');
+  if(c!==String(me.pw)){err.textContent='현재 비밀번호가 틀립니다.';return;}
+  if(n.length<4){err.textContent='4자 이상이어야 합니다.';return;}
+  if(n!==r){err.textContent='비밀번호가 일치하지 않습니다.';return;}
+  const up={...me,pw:n};
+  D.teachers=D.teachers.map(t=>t.id===CU.id?up:t);
+  await A.saveRec('teachers',up);A.closeModal();
+};
+
+/* ── 지점 선택 드롭다운 helper ── */
+function branchSelect(selected,req){
+  const opt=(req?'':'<option value="">미지정</option>')+D.branches.map(b=>`<option value="${esc(b.id)}" ${(selected||currentBranch!=='전체'?selected:b.id)===(selected||b.id)?'selected':''}}>${esc(b.name)}</option>`).join('');
+  return `<select id="fbr">${D.branches.map(b=>`<option value="${esc(b.id)}" ${selected===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}${!req?'<option value="" '+(selected?'':'selected')+'>미지정</option>':''}</select>`;
+}
+function brSelect(selected){
+  return '<select id="fbr">'+
+    (currentBranch!=='전체'?'':'<option value="">미지정</option>')+
+    D.branches.map(b=>`<option value="${esc(b.id)}" ${(selected||currentBranch)===b.id?'selected':''}>${esc(b.name)}</option>`).join('')+
+  '</select>';
+}
+
+/* ── 학생 관리 ── */
+A.vStudents=function(){
+  const active=D.students.filter(s=>s.status==='active'&&bFilter(s));
+  const fl=active.filter(s=>(!srch||s.name.includes(srch)||(s.phone||'').includes(srch))&&(gf==='전체'||s.grade===gf));
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+  '<div><h2 style="font-size:18px;font-weight:700;color:#1E293B">재원생 관리</h2>'+
+  '<p style="font-size:12px;color:#94A3B8;margin-top:3px">'+
+  (currentBranch==='전체'?'전체 ':'<span style="color:'+brColor(currentBranch)+'">'+esc(currentBranch)+'</span> ')+active.length+'명 재원 중</p></div>'+
+  '<button class="btn bp" onclick="app.openSF(\'\')">+ 학생 추가</button></div>'+
+  '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+  '<input style="width:220px" value="'+esc(srch)+'" oninput="app.setSrch(this.value)" placeholder="이름 / 연락처 검색">'+
+  '<select style="width:96px" onchange="app.setGf(this.value)"><option '+(gf==='전체'?'selected':'')+'>전체</option>'+
+    GRADES.map(g=>'<option '+(gf===g?'selected':'')+'>'+g+'</option>').join('')+'</select></div>'+
+  '<div class="card" style="padding:0;overflow-x:auto">'+
+  '<table><thead><tr><th>이름</th><th>학년</th><th>지점</th><th>학교</th><th>수강반</th><th>학생 연락처</th><th>학부모 연락처</th><th>월수강료</th><th></th></tr></thead><tbody>'+
+  (fl.length?fl.map(s=>'<tr>'+
+    '<td style="font-weight:700">'+esc(s.name)+'</td>'+
+    '<td><span class="gtag">'+esc(s.grade)+'</span></td>'+
+    '<td>'+brTag(s.branch)+'</td>'+
+    '<td style="font-size:12px;color:#64748B">'+(s.school?esc(s.school):'—')+'</td>'+
+    '<td style="font-size:12px;color:#64748B">'+cnames(s.classIds)+'</td>'+
+    '<td style="color:#64748B;font-size:12px">'+(s.phone?esc(s.phone):'—')+'</td>'+
+    '<td style="color:#64748B;font-size:12px">'+(s.parentPhone?esc(s.parentPhone):'—')+'</td>'+
+    '<td style="font-size:12px">'+(s.monthlyFee?fmtW(s.monthlyFee):'—')+'</td>'+
+    '<td><div style="display:flex;gap:3px">'+
+    '<button class="btn" onclick="app.openSF(\''+s.id+'\')">수정</button>'+
+    '<button class="btn" style="color:#791F1F" onclick="app.wFlow(\''+s.id+'\')">퇴원</button>'+
+    '<button class="btn" style="color:#94A3B8;font-size:11px" onclick="app.delS(\''+s.id+'\')">삭제</button>'+
+    '</div></td></tr>').join(''):
+    '<tr><td colspan="9" class="empty">등록된 학생이 없습니다.</td></tr>')+
+  '</tbody></table></div></div>';
+};
+A.setSrch=function(v){srch=v;A.render();};
+A.setGf=function(v){gf=v;A.render();};
+A.openSF=function(id){
+  const s=id?getS(id):{},cids=s.classIds||[];
+  const chips=D.classes.filter(bFilter).map(c=>'<button class="chipbtn '+(cids.includes(c.id)?'on':'')+'" data-cid="'+c.id+'" onclick="this.classList.toggle(\'on\')">'+esc(c.name)+'</button>').join('');
+  const defBr=s.branch||(currentBranch!=='전체'?currentBranch:(D.branches[0]||{}).id||'');
+  const body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div style="grid-column:1/-1"><label>이름 *</label><input id="fn" value="'+esc(s.name||'')+'"></div>'+
+    '<div><label>학년</label><select id="fg">'+GRADES.map(g=>'<option '+((s.grade||'고1')===g?'selected':'')+'>'+g+'</option>').join('')+'</select></div>'+
+    '<div><label>지점</label><select id="fbr">'+D.branches.map(b=>'<option value="'+esc(b.id)+'" '+(defBr===b.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'<option value="" '+(defBr?'':'selected')+'>미지정</option></select></div>'+
+    '<div><label>학교</label><input id="fsc" value="'+esc(s.school||'')+'" placeholder="예) 리드림중학교"></div>'+
+    '<div><label>등록일</label><input type="date" id="fe" value="'+esc(s.enrollDate||today())+'"></div>'+
+    '<div><label>월수강료 (원)</label><input type="number" id="ff" value="'+(s.monthlyFee||'')+'" placeholder="0"></div>'+
+    '<div><label>학생 연락처</label><input id="fp" value="'+esc(s.phone||'')+'" placeholder="010-0000-0000"></div>'+
+    '<div><label>학부모 연락처</label><input id="fpp" value="'+esc(s.parentPhone||'')+'" placeholder="010-0000-0000"></div></div>'+
+    (chips?'<div style="margin-top:10px"><label>수강 수업반</label><div style="margin-top:4px">'+chips+'</div></div>':'')+
+    '<div style="margin-top:10px"><label>메모</label><textarea id="fm" style="height:48px;resize:vertical">'+esc(s.memo||'')+'</textarea></div>';
+  A.openModal(A.mWrap(id?'학생 정보 수정':'학생 추가',body,
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.saveS(\''+id+'\')">저장</button>'));
+};
+A.saveS=async function(id){
+  const name=document.getElementById('fn').value.trim();
+  if(!name){alert('이름을 입력하세요.');return;}
+  const cids=[...document.querySelectorAll('[data-cid].on')].map(b=>b.dataset.cid);
+  const s={id:id||uid(),name,grade:document.getElementById('fg').value,branch:document.getElementById('fbr').value,school:document.getElementById('fsc').value,enrollDate:document.getElementById('fe').value,monthlyFee:Number(document.getElementById('ff').value)||0,phone:document.getElementById('fp').value,parentPhone:document.getElementById('fpp').value,memo:document.getElementById('fm').value,classIds:cids,status:'active'};
+  if(id)D.students=D.students.map(x=>x.id===id?{...x,...s}:x);else D.students.push(s);
+  A.closeModal();await A.saveRec('students',s);
+};
+A.delS=async function(id){
+  if(!confirm('정말 삭제하시겠습니까?'))return;
+  D.students=D.students.filter(s=>s.id!==id);
+  modal=null;A.render();await A.delRec('students',id);
+};
+A.wFlow=function(id){
+  const s=getS(id);
+  A.openModal(A.mWrap('퇴원 처리',
+    '<p style="font-size:13px;color:#64748B;margin-bottom:14px">'+esc(s.name)+' 학생</p>'+
+    '<label>퇴원일</label><input type="date" id="wd" value="'+today()+'" style="margin-bottom:10px">'+
+    '<label>퇴원 사유</label><textarea id="wr" style="height:60px;resize:vertical" placeholder="사유 (선택)"></textarea>',
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bd" onclick="app.doW(\''+id+'\')">퇴원 처리</button>'));
+};
+A.doW=async function(id){
+  const up={...getS(id),status:'withdrawn',withdrawDate:document.getElementById('wd').value,withdrawReason:document.getElementById('wr').value};
+  D.students=D.students.map(s=>s.id===id?up:s);
+  A.closeModal();await A.saveRec('students',up);
+};
+
+/* ── 시간표 ── */
+A.vTimetable=function(){
+  const tchs=[{id:'전체',name:'전체'},...D.teachers];
+  const filt=(ttFil==='전체'?D.classes:D.classes.filter(c=>c.teacherId===ttFil)).filter(bFilter);
+  const byDay=DAYS.map(d=>({day:d,cls:filt.filter(c=>(c.days||[]).includes(d)).sort((a,b)=>(a.startTime||'')>(b.startTime||'')?1:-1)}));
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+  '<h2 style="font-size:18px;font-weight:700;color:#1E293B">시간표 관리</h2>'+
+  '<button class="btn bp" onclick="app.openCF(\'\')">+ 수업반 추가</button></div>'+
+  '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
+  tchs.map(t=>'<button class="ftrbtn '+(ttFil===t.id?'on':'')+'" onclick="app.setTtFil(\''+t.id+'\')">'+esc(t.name)+'</button>').join('')+'</div>'+
+  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px;margin-bottom:18px">'+
+  (filt.length?filt.map(c=>{
+    const cnt=D.students.filter(s=>s.status==='active'&&(s.classIds||[]).includes(c.id)).length;
+    return '<div class="card" style="padding:14px">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
+    '<div><div style="font-weight:700;font-size:14px">'+esc(c.name)+'</div>'+
+    '<div style="font-size:11px;color:#94A3B8;margin-top:1px">'+esc(c.subject)+' · '+esc((getT(c.teacherId)||{}).name||'담당 미정')+'</div></div>'+
+    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">'+
+    '<span style="background:#EAF3DE;color:#27500A;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700">'+cnt+'명</span>'+
+    brTag(c.branch)+'</div></div>'+
+    '<div style="font-size:11px;color:#94A3B8;margin-bottom:10px">'+((c.days||[]).join(' ')||'요일 미정')+' '+(c.startTime||'')+'~'+(c.endTime||'')+'</div>'+
+    '<div style="display:flex;gap:4px"><button class="btn" onclick="app.openCF(\''+c.id+'\')">수정</button>'+
+    '<button class="btn" style="color:#791F1F" onclick="app.delC(\''+c.id+'\')">삭제</button></div></div>';
+  }).join(''):'<div class="card" style="grid-column:1/-1;text-align:center;padding:28px;color:#94A3B8">수업반이 없습니다.</div>')+
+  '</div>'+
+  (filt.length?'<div class="card"><p style="font-size:13px;font-weight:700;color:#64748B;margin-bottom:12px">주간 시간표</p>'+
+  '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">'+
+  byDay.map(o=>'<div><div style="font-weight:700;font-size:13px;text-align:center;margin-bottom:6px;color:'+(o.day==='토'?'#185FA5':'#1E293B')+'">'+o.day+'</div>'+
+    (o.cls.length?o.cls.map(c=>'<div style="background:#E6F1FB;border-radius:6px;padding:6px 7px;margin-bottom:4px;font-size:10px"><div style="font-weight:700;color:#0C447C">'+esc(c.name)+'</div><div style="color:#185FA5">'+(c.startTime||'')+'~'+(c.endTime||'')+'</div></div>').join(''):
+    '<div style="font-size:11px;color:#CBD5E1;text-align:center;padding:6px">—</div>')+
+    '</div>').join('')+'</div></div>':'')+'</div>';
+};
+A.setTtFil=function(v){ttFil=v;A.render();};
+A.openCF=function(id){
+  const c=id?getC(id):{},days=c.days||[];
+  const defBr=c.branch||(currentBranch!=='전체'?currentBranch:(D.branches[0]||{}).id||'');
+  const body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div style="grid-column:1/-1"><label>수업반 이름 *</label><input id="cn" value="'+esc(c.name||'')+'" placeholder="고1 문법반"></div>'+
+    '<div><label>과목 <span style="font-weight:400;color:#94A3B8">(직접 입력)</span></label>'+
+    '<input id="cs" list="subj-list" value="'+esc(c.subject||'')+'" placeholder="예) 수능영어, 내신문법 등" autocomplete="off">'+
+    '<datalist id="subj-list">'+SUBJ_HINTS.map(s=>'<option value="'+esc(s)+'">').join('')+'</datalist></div>'+
+    '<div><label>담당 선생님</label><select id="cti"><option value="">담당 미정</option>'+D.teachers.map(t=>'<option value="'+t.id+'" '+(c.teacherId===t.id?'selected':'')+'>'+esc(t.name)+'</option>').join('')+'</select></div>'+
+    '<div><label>지점</label><select id="fbr">'+D.branches.map(b=>'<option value="'+esc(b.id)+'" '+(defBr===b.id?'selected':'')+'>'+esc(b.name)+'</option>').join('')+'<option value="" '+(defBr?'':'selected')+'>미지정</option></select></div>'+
+    '<div><label>시작 시간</label><input type="time" id="cst" value="'+(c.startTime||'16:00')+'"></div>'+
+    '<div><label>종료 시간</label><input type="time" id="cen" value="'+(c.endTime||'17:30')+'"></div></div>'+
+    '<div style="margin-top:12px"><label>수업 요일</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+    DAYS.map(d=>'<button class="togbtn '+(days.includes(d)?'on':'')+'" data-day="'+d+'" onclick="this.classList.toggle(\'on\')">'+d+'</button>').join('')+
+    '</div></div>';
+  A.openModal(A.mWrap(id?'수업반 수정':'수업반 추가',body,
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.saveC(\''+id+'\')">저장</button>'));
+};
+A.saveC=async function(id){
+  const name=document.getElementById('cn').value.trim();
+  if(!name){alert('수업반 이름을 입력하세요.');return;}
+  const days=[...document.querySelectorAll('[data-day].on')].map(b=>b.dataset.day);
+  const c={id:id||uid(),name,subject:document.getElementById('cs').value,teacherId:document.getElementById('cti').value,branch:document.getElementById('fbr').value,startTime:document.getElementById('cst').value,endTime:document.getElementById('cen').value,days};
+  if(id)D.classes=D.classes.map(x=>x.id===id?c:x);else D.classes.push(c);
+  A.closeModal();await A.saveRec('classes',c);
+};
+A.delC=async function(id){
+  if(!confirm('수업반을 삭제하시겠습니까?'))return;
+  D.classes=D.classes.filter(c=>c.id!==id);
+  const toUpd=D.students.filter(s=>(s.classIds||[]).includes(id));
+  D.students=D.students.map(s=>({...s,classIds:(s.classIds||[]).filter(cid=>cid!==id)}));
+  modal=null;A.render();
+  await A.delRec('classes',id);
+  for(const s of toUpd)await A.saveRec('students',{...s,classIds:(s.classIds||[]).filter(cid=>cid!==id)});
+};
+
+/* ── 수업일지 ── */
+A.vJournal=function(){
+  const active=D.students.filter(s=>s.status==='active'&&bFilter(s)).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+  const grouped={};
+  active.forEach(s=>{const sc=s.school||'학교 미입력';if(!grouped[sc])grouped[sc]={};if(!grouped[sc][s.grade])grouped[sc][s.grade]=[];grouped[sc][s.grade].push(s);});
+  let side='';
+  Object.keys(grouped).sort((a,b)=>a.localeCompare(b,'ko')).forEach(sc=>{
+    side+='<div class="ghead">'+esc(sc)+'</div>';
+    Object.keys(grouped[sc]).sort((a,b)=>GRADES.indexOf(a)-GRADES.indexOf(b)).forEach(g=>{
+      side+='<div class="shead">'+g+'</div>'+grouped[sc][g].map(s=>'<div class="jstu '+(jSel===s.id?'on':'')+'" onclick="app.selJ(\''+s.id+'\')">'+esc(s.name)+'</div>').join('');
+    });
+  });
+  const sel=jSel?getS(jSel):null;
+  const entries=sel?D.journals.filter(j=>j.studentId===jSel).sort((a,b)=>(b.date||'').localeCompare(a.date||'')):[];
+  const right=sel?
+    '<div style="flex:1;min-width:0">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+    '<div><strong style="font-size:15px">'+esc(sel.name)+'</strong>'+
+    '<span style="font-size:12px;color:#94A3B8;margin-left:8px">'+esc(sel.grade)+' · '+(sel.school?esc(sel.school):'—')+'</span>'+
+    '<span style="margin-left:6px">'+brTag(sel.branch)+'</span></div>'+
+    '<button class="btn bp" onclick="app.openJF(\''+jSel+'\')">+ 일지 추가</button></div>'+
+    (entries.length?entries.map(j=>'<div class="card" style="margin-bottom:12px;padding:14px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<span style="font-size:12px;font-weight:700;color:#94A3B8">'+esc(j.date)+' · '+esc(j.teacherName)+'</span>'+
+      '<button class="btn" style="font-size:11px;color:#791F1F;padding:3px 7px" onclick="app.delJ(\''+j.id+'\')">삭제</button></div>'+
+      (j.content?'<p style="font-size:13px;white-space:pre-wrap;line-height:1.6;margin-bottom:'+(j.homework?'10px':'0')+'">'+esc(j.content)+'</p>':'')+
+      (j.homework?'<div style="background:#FFFBE6;border-left:3px solid #BA7517;padding:8px 12px;border-radius:0 6px 6px 0;font-size:12px"><strong style="color:#7A4F0A">📋 과제:</strong> '+esc(j.homework)+'</div>':'')+
+      '</div>').join(''):
+      '<div class="card" style="text-align:center;padding:32px;color:#94A3B8">수업일지가 없습니다.</div>')+
+    '</div>':
+    '<div class="card" style="flex:1;display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;min-height:200px">← 학생을 선택하세요</div>';
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<h2 style="font-size:18px;font-weight:700;color:#1E293B;margin-bottom:14px">수업일지 / 과제</h2>'+
+  '<div style="display:flex;gap:14px;align-items:flex-start">'+
+  '<div class="card" style="width:185px;min-width:155px;padding:0;overflow-y:auto;max-height:540px;flex-shrink:0">'+(active.length?side:'<div class="empty">학생 없음</div>')+'</div>'+
+  right+'</div></div>';
+};
+A.selJ=function(id){jSel=jSel===id?null:id;A.render();};
+A.openJF=function(sid){
+  A.openModal(A.mWrap('수업일지 추가',
+    '<label>수업일</label><input type="date" id="jd" value="'+today()+'" style="margin-bottom:10px">'+
+    '<label>수업 내용</label><textarea id="jc" style="height:90px;resize:vertical;margin-bottom:10px" placeholder="오늘 수업한 내용"></textarea>'+
+    '<label>과제</label><textarea id="jh" style="height:60px;resize:vertical" placeholder="과제 내용 (없으면 비워두세요)"></textarea>',
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.saveJ(\''+sid+'\')">저장</button>'));
+};
+A.saveJ=async function(sid){
+  const j={id:uid(),studentId:sid,date:document.getElementById('jd').value,content:document.getElementById('jc').value,homework:document.getElementById('jh').value,teacherId:CU.id,teacherName:CU.name,createdAt:new Date().toISOString()};
+  D.journals.push(j);A.closeModal();await A.saveRec('journals',j);
+};
+A.delJ=async function(id){
+  if(!confirm('삭제하시겠습니까?'))return;
+  D.journals=D.journals.filter(j=>j.id!==id);
+  modal=null;A.render();await A.delRec('journals',id);
+};
+
+/* ── 퇴원생 ── */
+A.vWithdrawn=function(){
+  const w=D.students.filter(s=>s.status==='withdrawn'&&bFilter(s));
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<div style="margin-bottom:16px"><h2 style="font-size:18px;font-weight:700;color:#1E293B">퇴원생 관리</h2><p style="font-size:12px;color:#94A3B8;margin-top:3px">총 '+w.length+'명</p></div>'+
+  '<div class="card" style="padding:0;overflow-x:auto">'+
+  '<table><thead><tr><th>이름</th><th>학년</th><th>지점</th><th>학교</th><th>등록일</th><th>퇴원일</th><th>퇴원 사유</th><th></th></tr></thead><tbody>'+
+  (w.length?w.map(s=>'<tr>'+
+    '<td style="font-weight:700;color:#94A3B8">'+esc(s.name)+'</td>'+
+    '<td><span class="gtag" style="opacity:.6">'+esc(s.grade)+'</span></td>'+
+    '<td>'+brTag(s.branch)+'</td>'+
+    '<td style="font-size:12px;color:#94A3B8">'+(s.school?esc(s.school):'—')+'</td>'+
+    '<td style="font-size:12px;color:#94A3B8">'+(s.enrollDate?esc(s.enrollDate):'—')+'</td>'+
+    '<td style="color:#791F1F;font-size:12px">'+(s.withdrawDate?esc(s.withdrawDate):'—')+'</td>'+
+    '<td style="font-size:12px;color:#94A3B8">'+(s.withdrawReason?esc(s.withdrawReason):'—')+'</td>'+
+    '<td><div style="display:flex;gap:4px">'+
+    '<button class="btn bs" onclick="app.restoreS(\''+s.id+'\')">복귀</button>'+
+    '<button class="btn" style="color:#791F1F" onclick="app.delS(\''+s.id+'\')">삭제</button>'+
+    '</div></td></tr>').join(''):
+    '<tr><td colspan="8" class="empty">퇴원생이 없습니다.</td></tr>')+
+  '</tbody></table></div></div>';
+};
+A.restoreS=async function(id){
+  if(!confirm('재원생으로 복귀 처리하시겠습니까?'))return;
+  const up={...getS(id),status:'active',withdrawDate:undefined,withdrawReason:undefined};
+  D.students=D.students.map(s=>s.id===id?up:s);
+  A.render();await A.saveRec('students',up);
+};
+
+/* ── 매출 분석 ── */
+A.vRevenue=function(){
+  const active=D.students.filter(s=>s.status==='active'&&bFilter(s));
+  const expected=active.reduce((a,s)=>a+(s.monthlyFee||0),0);
+  const stuIds=new Set(active.map(s=>s.id));
+  const mPays=D.payments.filter(p=>p.month===revM&&stuIds.has(p.studentId));
+  const collected=mPays.reduce((a,p)=>a+(p.amount||0),0);
+  const paidMap={};mPays.forEach(p=>{paidMap[p.studentId]=p;});
+  const unpaidCnt=active.filter(s=>!paidMap[s.id]&&s.monthlyFee>0).length;
+  const now=new Date();
+  const months6=Array.from({length:6},(_,i)=>{
+    const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);
+    const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    return{label:(d.getMonth()+1)+'월',m,col:D.payments.filter(p=>p.month===m&&stuIds.has(p.studentId)).reduce((a,p)=>a+(p.amount||0),0)};
+  });
+  const maxC=Math.max(...months6.map(x=>x.col),1);
+  let payRows='';
+  active.filter(s=>s.monthlyFee>0).forEach(s=>{
+    const paid=paidMap[s.id];
+    payRows+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #E2E8F0">'+
+      '<div style="flex:1"><span style="font-weight:600;font-size:13px">'+esc(s.name)+'</span><span style="font-size:11px;color:#94A3B8;margin-left:6px">'+esc(s.grade)+'</span></div>'+
+      '<span style="font-size:12px;color:#94A3B8">'+fmtW(s.monthlyFee)+'</span>'+
+      (paid?'<span style="background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">납부✓</span><button class="btn" style="font-size:11px;padding:3px 7px;color:#791F1F" onclick="app.cancelPay(\''+paid.id+'\')">취소</button>':
+       '<button class="btn bp" style="font-size:11px;padding:3px 8px" onclick="app.openPayModal(\''+s.id+'\','+s.monthlyFee+')">납부</button>')+
+      '</div>';
+  });
+  const brLabel=currentBranch==='전체'?'전체 지점':esc(currentBranch);
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+  '<div><h2 style="font-size:18px;font-weight:700;color:#1E293B">매출 분석</h2>'+
+  '<p style="font-size:12px;color:#94A3B8;margin-top:2px">'+brLabel+'</p></div>'+
+  '<div style="display:flex;align-items:center;gap:8px"><label style="margin:0;font-size:12px;color:#64748B;white-space:nowrap">조회 월</label><input type="month" value="'+revM+'" onchange="app.setRevM(this.value)" style="width:135px"></div></div>'+
+  '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px">'+
+  '<div class="card" style="text-align:center;padding:16px"><div style="font-size:11px;color:#94A3B8;margin-bottom:4px">예상 수입</div><div style="font-size:24px;font-weight:700;color:#185FA5">'+fmtW(expected)+'</div><div style="font-size:11px;color:#94A3B8;margin-top:3px">'+active.length+'명 기준</div></div>'+
+  '<div class="card" style="text-align:center;padding:16px"><div style="font-size:11px;color:#94A3B8;margin-bottom:4px">수납 완료</div><div style="font-size:24px;font-weight:700;color:#3B6D11">'+fmtW(collected)+'</div><div style="font-size:11px;color:#94A3B8;margin-top:3px">'+Object.keys(paidMap).length+'명 납부</div></div>'+
+  '<div class="card" style="text-align:center;padding:16px"><div style="font-size:11px;color:#94A3B8;margin-bottom:4px">미납 예상</div><div style="font-size:24px;font-weight:700;color:#791F1F">'+fmtW(Math.max(0,expected-collected))+'</div><div style="font-size:11px;color:#94A3B8;margin-top:3px">'+unpaidCnt+'명 미납</div></div>'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+  '<div class="card"><p style="font-size:13px;font-weight:700;margin-bottom:12px">최근 6개월 수납</p>'+
+  '<div style="display:flex;gap:6px;align-items:flex-end;height:80px;margin-bottom:6px">'+
+  months6.map(m=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;background:'+(m.m===revM?'#185FA5':'#93C5E8')+';border-radius:3px 3px 0 0;height:'+(Math.round((m.col/maxC)*65)+5)+'px;min-height:5px"></div><span style="font-size:10px;color:#94A3B8">'+m.label+'</span></div>').join('')+
+  '</div><p style="font-size:10px;color:#94A3B8">진한 파랑 = 조회 월</p></div>'+
+  '<div class="card"><p style="font-size:13px;font-weight:700;margin-bottom:10px">학생별 납부 현황 <span style="font-weight:400;color:#94A3B8;font-size:11px">'+revM+'</span></p>'+
+  '<div style="max-height:220px;overflow-y:auto">'+(payRows||'<p style="font-size:13px;color:#94A3B8;padding:16px 0;text-align:center">월수강료 입력 학생이 없습니다.</p>')+'</div></div>'+
+  '</div></div>';
+};
+A.setRevM=function(v){revM=v;A.render();};
+A.openPayModal=function(sid,def){
+  const s=getS(sid);
+  A.openModal(A.mWrap('납부 처리',
+    '<p style="font-size:13px;color:#64748B;margin-bottom:14px">'+esc((s||{}).name)+' · '+revM+'</p>'+
+    '<label>납부 금액 (원)</label><input type="number" id="pamt" value="'+def+'" style="margin-bottom:10px">'+
+    '<label>메모 (선택)</label><input id="pnote" placeholder="메모">',
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.savePay(\''+sid+'\')">납부 처리</button>'));
+};
+A.savePay=async function(sid){
+  const p={id:uid(),studentId:sid,month:revM,amount:Number(document.getElementById('pamt').value)||0,note:document.getElementById('pnote').value,createdAt:new Date().toISOString()};
+  D.payments.push(p);A.closeModal();await A.saveRec('payments',p);
+};
+A.cancelPay=async function(id){
+  if(!confirm('납부 기록을 취소하시겠습니까?'))return;
+  D.payments=D.payments.filter(p=>p.id!==id);
+  modal=null;A.render();await A.delRec('payments',id);
+};
+
+/* ── 통계 ── */
+A.vStats=function(){
+  const allActive=D.students.filter(s=>s.status==='active');
+  const allWn=D.students.filter(s=>s.status==='withdrawn');
+  const active=allActive.filter(bFilter),wn=allWn.filter(bFilter);
+  const now=new Date();
+  const months12=Array.from({length:12},(_,i)=>{
+    const d=new Date(now.getFullYear(),now.getMonth()-(11-i),1);
+    const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const stu=D.students.filter(bFilter);
+    return{label:(d.getMonth()+1)+'월',en:stu.filter(s=>(s.enrollDate||'').startsWith(k)).length,out:stu.filter(s=>s.status==='withdrawn'&&(s.withdrawDate||'').startsWith(k)).length};
+  });
+  const maxM=Math.max(...months12.flatMap(m=>[m.en,m.out]),1);
+  const byG=GRADES.map(g=>({g,n:active.filter(s=>s.grade===g).length})),maxG=Math.max(...byG.map(x=>x.n),1);
+  const byC=D.classes.filter(bFilter).map(c=>({name:c.name,n:active.filter(s=>(s.classIds||[]).includes(c.id)).length})),maxCC=Math.max(...byC.map(x=>x.n),1);
+  // 지점별 비교 (전체 보기일 때)
+  const brStats=currentBranch==='전체'?D.branches.map(b=>({name:b.name,color:brColor(b.id),n:allActive.filter(s=>s.branch===b.id).length})):[];
+  const maxBr=Math.max(...brStats.map(x=>x.n),1);
+  const sc=(v,l,col)=>'<div class="card" style="text-align:center;padding:16px"><div style="font-size:32px;font-weight:700;color:'+col+'">'+v+'</div><div style="font-size:12px;color:#94A3B8;margin-top:3px">'+l+'</div></div>';
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<h2 style="font-size:18px;font-weight:700;color:#1E293B;margin-bottom:16px">등록 / 퇴원 통계</h2>'+
+  '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">'+sc(active.length,'재원생','#185FA5')+sc(wn.length,'퇴원생','#791F1F')+sc(D.classes.filter(bFilter).length,'수업반','#BA7517')+sc(D.students.filter(bFilter).length,'총 누적','#3B6D11')+'</div>'+
+  (brStats.length?'<div class="card" style="margin-bottom:14px"><p style="font-size:13px;font-weight:700;margin-bottom:12px">지점별 재원생</p>'+
+  '<div style="display:flex;gap:12px">'+brStats.map(b=>'<div style="flex:1;text-align:center">'+
+  '<div style="height:60px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px">'+
+  '<div style="width:48px;background:'+b.color+';border-radius:4px 4px 0 0;height:'+(Math.round((b.n/maxBr)*50)+6)+'px;min-height:6px"></div></div>'+
+  '<div style="font-size:13px;font-weight:700">'+b.n+'명</div>'+
+  '<div style="font-size:11px;color:#64748B;margin-top:2px">'+esc(b.name)+'</div></div>').join('')+
+  '</div></div>':'')+ 
+  '<div class="card" style="margin-bottom:14px"><p style="font-size:13px;font-weight:700;margin-bottom:12px">최근 12개월 신규 등록 / 퇴원</p>'+
+  '<div style="display:flex;gap:3px;align-items:flex-end;height:90px;margin-bottom:6px">'+
+  months12.map(m=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="display:flex;gap:2px;align-items:flex-end;height:72px"><div style="width:10px;background:#185FA5;border-radius:2px 2px 0 0;height:'+(Math.round((m.en/maxM)*65)+3)+'px;min-height:3px"></div><div style="width:10px;background:#F09595;border-radius:2px 2px 0 0;height:'+(Math.round((m.out/maxM)*65)+3)+'px;min-height:3px"></div></div><span style="font-size:10px;color:#94A3B8">'+m.label+'</span></div>').join('')+
+  '</div><div style="display:flex;gap:12px;font-size:11px;color:#94A3B8"><span><span style="display:inline-block;width:10px;height:10px;background:#185FA5;border-radius:2px;vertical-align:middle;margin-right:3px"></span>신규</span><span><span style="display:inline-block;width:10px;height:10px;background:#F09595;border-radius:2px;vertical-align:middle;margin-right:3px"></span>퇴원</span></div></div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+  '<div class="card"><p style="font-size:13px;font-weight:700;margin-bottom:12px">학년별 재원생</p>'+byG.map(o=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="width:28px;font-size:12px;color:#64748B">'+o.g+'</span><div style="flex:1;height:16px;background:#F1F5F9;border-radius:4px;overflow:hidden"><div style="width:'+Math.round((o.n/maxG)*100)+'%;height:100%;background:#185FA5;border-radius:4px"></div></div><span style="width:20px;text-align:right;font-size:12px;font-weight:700">'+o.n+'</span></div>').join('')+'</div>'+
+  '<div class="card"><p style="font-size:13px;font-weight:700;margin-bottom:12px">수업반별 인원</p>'+(byC.length?byC.map(o=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="width:72px;font-size:11px;color:#64748B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">'+esc(o.name)+'</span><div style="flex:1;height:16px;background:#F1F5F9;border-radius:4px;overflow:hidden"><div style="width:'+Math.round((o.n/maxCC)*100)+'%;height:100%;background:#BA7517;border-radius:4px"></div></div><span style="width:20px;text-align:right;font-size:12px;font-weight:700">'+o.n+'</span></div>').join(''):'<p style="font-size:13px;color:#94A3B8;padding:14px 0;text-align:center">수업반을 먼저 추가하세요</p>')+'</div>'+
+  '</div></div>';
+};
+
+/* ── 선생님 & 지점 관리 ── */
+A.vTeachers=function(){
+  const brSection='<div style="margin-top:28px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+  '<div><h3 style="font-size:16px;font-weight:700;color:#1E293B">지점 관리</h3><p style="font-size:12px;color:#94A3B8;margin-top:2px">현재 '+D.branches.length+'개 지점</p></div></div>'+
+  '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">'+
+  '<table><thead><tr><th>지점명</th><th>색상</th><th>재원생</th><th></th></tr></thead><tbody>'+
+  D.branches.map((b,i)=>'<tr>'+
+    '<td style="font-weight:700">'+esc(b.name)+'</td>'+
+    '<td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:'+brColor(b.id)+';vertical-align:middle"></span></td>'+
+    '<td>'+D.students.filter(s=>s.status==='active'&&s.branch===b.id).length+'명</td>'+
+    '<td><button class="btn" style="color:#791F1F;font-size:11px" onclick="app.delBranch(\''+b.id+'\')">삭제</button></td></tr>').join('')+
+  '</tbody></table></div>'+
+  '<div style="display:flex;gap:8px;align-items:center">'+
+  '<input id="new-branch" placeholder="새 지점명 입력 (예: 송정점)" style="max-width:220px" onkeydown="if(event.key===\'Enter\')app.addBranch()">'+
+  '<button class="btn bp" onclick="app.addBranch()">+ 지점 추가</button></div></div>';
+  return '<div style="padding:20px;max-width:1100px;margin:0 auto">'+
+  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'+
+  '<div><h2 style="font-size:18px;font-weight:700;color:#1E293B">선생님 관리</h2><p style="font-size:12px;color:#94A3B8;margin-top:3px">총 '+D.teachers.length+'명</p></div>'+
+  '<button class="btn bp" onclick="app.openTF(\'\')">+ 선생님 추가</button></div>'+
+  '<div class="card" style="padding:0;overflow:hidden">'+
+  '<table><thead><tr><th>이름</th><th>아이디</th><th>권한</th><th></th></tr></thead><tbody>'+
+  D.teachers.map(t=>'<tr>'+
+    '<td style="font-weight:700">'+esc(t.name)+(t.id===CU.id?' <span style="font-size:11px;color:#185FA5">(나)</span>':'')+'</td>'+
+    '<td style="color:#64748B;font-size:12px;font-family:monospace">'+esc(t.id)+'</td>'+
+    '<td><span style="background:'+(t.role==='admin'?'#E6F1FB':'#F1F5F9')+';color:'+(t.role==='admin'?'#0C447C':'#64748B')+';padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600">'+(t.role==='admin'?'관리자':'선생님')+'</span></td>'+
+    '<td><div style="display:flex;gap:4px"><button class="btn" onclick="app.openTF(\''+t.id+'\')">수정</button>'+(t.id!==CU.id?'<button class="btn" style="color:#791F1F" onclick="app.delT(\''+t.id+'\')">삭제</button>':'')+'</div></td></tr>').join('')+
+  '</tbody></table></div>'+
+  '<p style="font-size:11px;color:#94A3B8;margin-top:10px">비밀번호는 헤더 🔒 버튼으로 각자 변경 가능합니다.</p>'+
+  brSection+'</div>';
+};
+A.addBranch=async function(){
+  const name=(document.getElementById('new-branch').value||'').trim();
+  if(!name){alert('지점명을 입력하세요.');return;}
+  if(D.branches.find(b=>b.id===name)){alert('이미 있는 지점명입니다.');return;}
+  const br={id:name,name};
+  D.branches.push(br);A.render();
+  await A.saveRec('branches',br);
+};
+A.delBranch=async function(id){
+  const cnt=D.students.filter(s=>s.branch===id).length+D.classes.filter(c=>c.branch===id).length;
+  if(cnt>0&&!confirm(`${id} 지점에 학생/수업반 데이터가 있습니다. 삭제해도 데이터는 유지됩니다. 계속할까요?`))return;
+  if(D.branches.length<=1){alert('최소 1개 지점은 필요합니다.');return;}
+  D.branches=D.branches.filter(b=>b.id!==id);
+  if(currentBranch===id){currentBranch='전체';localStorage.setItem(BRANCH_KEY,'전체');}
+  A.render();await A.delRec('branches',id);
+};
+A.openTF=function(id){
+  const t=id?getT(id):{},isMe=id===CU.id;
+  const body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
+    '<div><label>이름 *</label><input id="tn" value="'+esc(t.name||'')+'"></div>'+
+    '<div><label>아이디 *</label><input id="ti" value="'+esc(t.id||'')+'" '+(id?'readonly style="opacity:.55;background:#F1F5F9"':'')+' autocomplete="off"></div>'+
+    '<div style="grid-column:1/-1"><label>'+(id?'비밀번호 (변경 시에만)':'비밀번호 *')+'</label><input type="password" id="tp" placeholder="'+(id?'비워두면 유지':'입력')+'" autocomplete="new-password"></div>'+
+    (!isMe?'<div style="grid-column:1/-1"><label>권한</label><select id="tr"><option value="teacher" '+((t.role||'teacher')==='teacher'?'selected':'')+'>선생님</option><option value="admin" '+(t.role==='admin'?'selected':'')+'>관리자</option></select></div>':'')+
+    '</div>';
+  A.openModal(A.mWrap(id?'선생님 수정':'선생님 추가',body,
+    '<button class="btn" onclick="app.closeModal()">취소</button><button class="btn bp" onclick="app.saveT(\''+id+'\')">저장</button>'));
+};
+A.saveT=async function(id){
+  const name=document.getElementById('tn').value.trim(),nid=id||document.getElementById('ti').value.trim(),pw=document.getElementById('tp').value;
+  const re=document.getElementById('tr'),role=re?re.value:(id?getT(id).role:'teacher');
+  if(!name){alert('이름을 입력하세요.');return;}
+  if(!nid){alert('아이디를 입력하세요.');return;}
+  if(!id&&!pw){alert('비밀번호를 입력하세요.');return;}
+  if(!id&&D.teachers.find(t=>t.id===nid)){alert('이미 사용 중인 아이디입니다.');return;}
+  const up=id?{...getT(id),name,role:id===CU.id?getT(id).role:role,pw:pw||getT(id).pw}:{id:nid,pw,name,role};
+  if(id)D.teachers=D.teachers.map(t=>t.id===id?up:t);else D.teachers.push(up);
+  if(id&&id===CU.id)CU.name=name;
+  A.closeModal();await A.saveRec('teachers',up);
+};
+A.delT=async function(id){
+  const t=getT(id);
+  if(t.role==='admin'&&D.teachers.filter(x=>x.role==='admin').length===1){alert('관리자가 1명뿐입니다.');return;}
+  if(!confirm(t.name+' 선생님을 삭제하시겠습니까?'))return;
+  D.teachers=D.teachers.filter(t=>t.id!==id);
+  modal=null;A.render();await A.delRec('teachers',id);
+};
+
+A.loadData();
+})();
+</script>
+</body>
+</html>
